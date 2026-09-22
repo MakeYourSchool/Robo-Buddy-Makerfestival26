@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>MF26 Robo-Buddy flashen</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
+<style>
+  :root{
+    --bg:#0d1117; --panel:#161b22; --line:#26303d; --fg:#e6edf3;
+    --muted:#8b949e; --accent:#5acdff; --warn:#d29922;
+  }
+  *{box-sizing:border-box}
+  body{
+    margin:0; background:var(--bg); color:var(--fg);
+    font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    display:flex; justify-content:center; padding:40px 20px 80px;
+  }
+  main{width:100%; max-width:640px}
+  h1{font-size:28px; margin:0 0 6px; letter-spacing:-.02em}
+  .sub{color:var(--muted); margin:0 0 28px}
+  .hero{
+    display:block; margin:0 auto 28px; max-width:260px; width:100%;
+    height:auto;
+  }
+  .card{
+    background:var(--panel); border:1px solid var(--line);
+    border-radius:14px; padding:22px; margin-bottom:18px;
+  }
+  .card h2{font-size:13px; text-transform:uppercase; letter-spacing:.09em;
+           color:var(--muted); margin:0 0 12px; font-weight:600}
+  ol{margin:0; padding-left:22px}
+  li{margin:7px 0}
+  .install{display:flex; justify-content:center; margin:22px 0 6px}
+  esp-web-install-button{--esp-tools-button-color:#04222e}
+  button.fallback{
+    background:var(--accent); color:#04222e; border:0; border-radius:9px;
+    padding:12px 22px; font:inherit; font-weight:600; cursor:pointer;
+  }
+  .note{
+    border-left:3px solid var(--warn); background:#1d1a10;
+    padding:13px 16px; border-radius:0 9px 9px 0; margin:0;
+    font-size:14.5px;
+  }
+  .note b{color:var(--warn)}
+  code{
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13.5px;
+    background:#0d1117; border:1px solid var(--line); border-radius:5px;
+    padding:1px 5px;
+  }
+  a{color:var(--accent)}
+  footer{color:var(--muted); font-size:13px; text-align:center; margin-top:30px}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<main>
+
+  <img class="hero" src="MF26-robot-cropped.png"
+       alt="Der MF26 Robo-Buddy mit rundem Display und lächelndem Gesicht">
+
+  <h1>Robo-Buddy flashen</h1>
+  <p class="sub">Firmware direkt aus dem Browser auf den Roboter spielen — ohne
+     Installation, ohne Entwicklungsumgebung.</p>
+
+  <div class="card">
+    <h2>So geht's</h2>
+    <ol>
+      <li>Roboter mit einem <b>USB-C-Datenkabel</b> an den Rechner stecken.
+          Reine Ladekabel funktionieren nicht.</li>
+      <li>Auf <b>Verbinden</b> klicken und in der Liste den Anschluss des
+          Roboters auswählen.</li>
+      <li><b>Install</b> wählen und warten. Das dauert etwa eine Minute.</li>
+    </ol>
+
+    <div class="install">
+      <esp-web-install-button manifest="manifest.json">
+        <button slot="activate" class="fallback">Verbinden und flashen</button>
+        <span slot="unsupported" class="note">
+          <b>Dieser Browser kann das nicht.</b> Das Flashen im Browser braucht
+          die Web-Serial-Schnittstelle: <b>Chrome</b> oder <b>Edge</b> auf
+          Windows, macOS oder Linux. Firefox und Safari können es nicht, und
+          auf Handys und Tablets geht es ebenfalls nicht.
+        </span>
+        <span slot="not-allowed" class="note">
+          <b>Nur über HTTPS.</b> Diese Seite muss über <code>https://</code>
+          geöffnet sein.
+        </span>
+      </esp-web-install-button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Danach</h2>
+    <p style="margin:0 0 10px">Der Roboter startet neu und zeigt auf dem Display
+       zwei QR-Codes nacheinander:</p>
+    <ol>
+      <li>Den ersten mit der Handykamera scannen — das Handy tritt dem WLAN des
+          Roboters bei.</li>
+      <li>Sobald das geklappt hat, zeigt das Display den zweiten Code. Der führt
+          zur Steuerseite.</li>
+    </ol>
+    <p style="margin:12px 0 0; color:var(--muted); font-size:14.5px">
+      Es wird kein Router und kein Internet gebraucht: Der Roboter macht sein
+      eigenes WLAN auf.</p>
+  </div>
+
+  <p class="note">
+    <b>Beim ersten Mal:</b> Wähle „Erase device“ mit aus. Damit werden auch alte
+    Einstellungen wie ein gespeichertes Gesicht gelöscht, und der Roboter startet
+    wirklich sauber.
+  </p>
+
+  <footer>
+    Quellcode und Bauanleitung:
+    <a href="https://github.com/MakeYourSchool/Robo-Buddy-Makerfestival26">
+      github.com/MakeYourSchool/Robo-Buddy-Makerfestival26</a>
+  </footer>
+
+</main>
+
+<script type="module"
+        src="https://unpkg.com/esp-web-tools@10/dist/web/install-button.js?module"></script>
+</body>
+</html>

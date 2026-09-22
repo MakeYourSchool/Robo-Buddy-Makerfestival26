@@ -1,0 +1,17 @@
+{
+  "name": "MF26 Robo-Buddy (Standalone)",
+  "version": "1.0.0",
+  "new_install_prompt_erase": true,
+  "builds": [
+    {
+      "chipFamily": "ESP32-C6",
+      "parts": [
+        {
+          "path": "firmware/mf26-standalone.bin",
+          "offset": 0
+        }
+      ],
+      "serialType": "cdc"
+    }
+  ]
+}

@@ -8,11 +8,28 @@ Der MF26-Roboter ohne Server: Er macht sein eigenes WLAN auf und bringt seine
 Steuerseite selbst mit. Es wird kein Router, kein Rechner und kein Internet
 gebraucht.
 
+> **Hinweis:** Die beiden Animationen auf dieser Seite sind zusammen gut 20 MB
+> groß und brauchen einen Moment, bis sie geladen sind. Wenn unten nur graue
+> Flächen zu sehen sind: kurz warten.
+
 <p align="center">
   <img src="demo.gif" alt="Der Roboter fährt und schaut dabei in die Fahrtrichtung" width="640">
 </p>
 
-## Einrichten
+## Aus dem Browser flashen
+
+Fertige Firmware ohne Installation aufspielen:
+
+**→ [Robo-Buddy flashen](https://makeyourschool.github.io/Robo-Buddy-Makerfestival26/)**
+
+Roboter mit einem USB-C-Datenkabel anstecken, auf der Seite verbinden, fertig.
+Das braucht **Chrome oder Edge** auf einem Rechner — Firefox und Safari können
+die dafür nötige Web-Serial-Schnittstelle nicht, Handys und Tablets auch nicht.
+
+Die aufgespielte Datei liegt als `docs/firmware/mf26-standalone.bin` im Repo.
+Nach Änderungen am Quellcode erzeugt `tools/release-firmware.sh` sie neu.
+
+## Selbst bauen
 
 ```sh
 pio run -t upload
