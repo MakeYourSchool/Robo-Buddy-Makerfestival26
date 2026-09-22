@@ -1,13 +1,20 @@
+<p align="center">
+  <img src="MF26-robot-cropped.png" alt="Der MF26 Robo-Buddy: gedrucktes rotes Gehäuse mit rundem Display, das ein lächelndes blaues Gesicht zeigt" width="420">
+</p>
+
 # MF26 Standalone
 
 Der MF26-Roboter ohne Server: Er macht sein eigenes WLAN auf und bringt seine
 Steuerseite selbst mit. Es wird kein Router, kein Rechner und kein Internet
 gebraucht.
 
+<p align="center">
+  <img src="demo.gif" alt="Der Roboter fährt und schaut dabei in die Fahrtrichtung" width="640">
+</p>
+
 ## Einrichten
 
 ```sh
-cd standalone
 pio run -t upload
 ```
 
@@ -31,6 +38,12 @@ Anleitung wieder auf das Display.
 WLAN-Präfix und Passwort stehen in `src/config.h`. Das Passwort ist nicht
 geheim, der QR-Code zeigt es jedem, der vor dem Roboter steht. Es verhindert
 nur, dass fremde Handys versehentlich beitreten.
+
+## Aufbau
+
+<p align="center">
+  <img src="MF26-Robot-Explosion.gif" alt="Explosionsansicht: Gehäuse, Display, zwei Servos mit Rädern, Schleppkugel und Platine" width="420">
+</p>
 
 ## Unterschiede zur Server-Version
 
