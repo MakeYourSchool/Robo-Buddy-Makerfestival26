@@ -23,8 +23,9 @@ Fertige Firmware ohne Installation aufspielen:
 **→ [Robo-Buddy flashen](https://makeyourschool.github.io/Robo-Buddy-Makerfestival26/)**
 
 Roboter mit einem USB-C-Datenkabel anstecken, auf der Seite verbinden, fertig.
-Das braucht **Chrome oder Edge** auf einem Rechner — Firefox und Safari können
-die dafür nötige Web-Serial-Schnittstelle nicht, Handys und Tablets auch nicht.
+Das braucht einen Rechner mit **Chrome**, **Edge** oder **Firefox ab 151** —
+Safari kann die dafür nötige Web-Serial-Schnittstelle nicht, Handys und Tablets
+ebenfalls nicht.
 
 Die aufgespielte Datei liegt als `docs/firmware/mf26-standalone.bin` im Repo.
 Nach Änderungen am Quellcode erzeugt `tools/release-firmware.sh` sie neu.
