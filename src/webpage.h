@@ -13,11 +13,11 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(
   :root{--bg:#0d1117;--panel:#161b22;--line:#26303d;--fg:#e6edf3;--muted:#8b949e;--accent:#5acdff}
   *{box-sizing:border-box}
   [hidden]{display:none!important}
-  html,body{height:100%}
+  html,body{min-height:100%}
   body{margin:0;background:var(--bg);color:var(--fg);
        font:15px/1.45 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
        display:flex;flex-direction:column;align-items:center;gap:14px;
-       padding:16px 14px 40px;touch-action:none;-webkit-user-select:none;user-select:none}
+       padding:16px 14px 40px;-webkit-user-select:none;user-select:none}
   header{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:.3px}
   #dot{width:9px;height:9px;border-radius:50%;background:#d0454c;transition:background .2s}
   #dot.on{background:#3fb950;box-shadow:0 0 10px #3fb95088}
@@ -31,7 +31,8 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(
   nav a:hover{color:var(--fg)}
   .tab{display:none;flex-direction:column;align-items:center;gap:14px;width:100%}
   .tab.on{display:flex}
-  canvas{touch-action:none;display:block}
+  canvas{display:block}
+  #pad{touch-action:none}  /* nur hier Wischen abfangen, sonst scrollt die Seite nicht */
   .panel{background:var(--panel);border:1px solid var(--line);border-radius:14px;
          padding:14px 16px;width:min(340px,100%)}
   .panel h3{margin:0 0 10px;font-size:11px;text-transform:uppercase;
