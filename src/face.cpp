@@ -116,9 +116,24 @@ bool Face::begin(Arduino_GFX *output) {
 }
 
 void Face::setConfig(const FaceConfig &c) {
+  const FaceConfig before = _cfg;
   _cfg = c;
   faceConfigClamp(_cfg);
   _dirty = true;
+
+  // The next blink and the next glance are scheduled when the previous one
+  // finishes, so a new interval would otherwise only take effect after the
+  // current wait runs out - up to 20 seconds of a slider seeming to do
+  // nothing. Re-anchor both to now whenever their setting changes.
+  const uint32_t now = millis();
+  if (_cfg.blinkEvery != before.blinkEvery || (_cfg.autoBlink && !before.autoBlink)) {
+    const uint32_t base = (uint32_t)_cfg.blinkEvery * 1000;
+    _nextBlink = now + base / 2 + random(base);
+  }
+  if (_cfg.lookEvery != before.lookEvery || (_cfg.autoLook && !before.autoLook)) {
+    const uint32_t base = (uint32_t)_cfg.lookEvery * 1000;
+    _gazeHold = now + base / 2 + random(base);
+  }
 }
 
 void Face::blinkNow() {
