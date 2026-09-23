@@ -279,6 +279,36 @@ static void onWsEvent(AsyncWebSocket *, AsyncWebSocketClient *client,
   }
 }
 
+// ------------------------------------------------------------- home WiFi --
+// Optional: the robot keeps its own access point running at all times, but can
+// additionally join a normal network. Credentials live in NVS. The AP never
+// goes away, so a wrong password can never lock anybody out of the robot.
+static String staSsid, staPass;
+static bool staTrying = false;
+static uint32_t staSince = 0;
+
+static void staConnect() {
+  if (!staSsid.length()) return;
+  WiFi.begin(staSsid.c_str(), staPass.c_str());
+  staTrying = true;
+  staSince = millis();
+}
+
+static void wifiStateJson(JsonObject o) {
+  o["ssid"] = staSsid;
+  o["saved"] = staSsid.length() > 0;
+  o["connected"] = WiFi.status() == WL_CONNECTED;
+  o["connecting"] = staTrying;
+  if (WiFi.status() == WL_CONNECTED) {
+    o["ip"] = WiFi.localIP().toString();
+    o["rssi"] = WiFi.RSSI();
+  }
+  JsonObject ap = o["ap"].to<JsonObject>();
+  ap["ssid"] = apSsid;
+  ap["ip"] = WiFi.softAPIP().toString();
+  ap["stations"] = WiFi.softAPgetStationNum();
+}
+
 // A WiFi login as a QR code: phones join the network straight from the camera.
 // Backslash-escape the characters the format reserves.
 static String wifiQr(const char *ssid, const char *pass) {
@@ -319,9 +349,16 @@ void setup() {
   // Standalone: never look for another network, always open our own.
   makeRobotCode();
   snprintf(apSsid, sizeof(apSsid), "%s%s", AP_SSID_PREFIX, robotCode);
-  WiFi.mode(WIFI_AP);
+  // AP_STA, not AP: the access point stays up even while joining a network, so
+  // the control page never becomes unreachable, and scanning needs the station
+  // interface to exist.
+  WiFi.mode(WIFI_AP_STA);
   WiFi.setSleep(false);
   WiFi.softAP(apSsid, AP_PASS);
+
+  staSsid = prefs.getString("staSsid", "");
+  staPass = prefs.getString("staPass", "");
+  staConnect();
 
   ws.onEvent(onWsEvent);
   server.addHandler(&ws);
@@ -336,6 +373,7 @@ void setup() {
     d["mode"] = "ap";
     d["ssid"] = apSsid;
     d["stations"] = WiFi.softAPgetStationNum();
+    wifiStateJson(d["wifi"].to<JsonObject>());
     d["code"] = robotCode;
     d["rssi"] = WiFi.RSSI();
     d["clients"] = ws.count();
@@ -498,6 +536,88 @@ void setup() {
   setHandler->setMethod(HTTP_PUT | HTTP_POST);
   server.addHandler(setHandler);
 
+  // Order matters: ESPAsyncWebServer matches a route as a prefix in
+  // registration order, so /api/wifi/... has to come before /api/wifi.
+  server.on("/api/wifi/scan", HTTP_GET, [](AsyncWebServerRequest *req) {
+    JsonDocument d;
+    int n = WiFi.scanComplete();
+    if (n == WIFI_SCAN_RUNNING) {
+      d["scanning"] = true;
+    } else if (n == WIFI_SCAN_FAILED) {
+      WiFi.scanNetworks(true);  // async, results arrive on a later poll
+      d["scanning"] = true;
+    } else {
+      d["scanning"] = false;
+      JsonArray arr = d["networks"].to<JsonArray>();
+      // strongest entry per name, the same network is often seen several times
+      for (int i = 0; i < n; i++) {
+        String ssid = WiFi.SSID(i);
+        if (!ssid.length()) continue;
+        bool seen = false;
+        for (JsonObject o : arr) {
+          if (ssid == o["ssid"].as<const char *>()) { seen = true; break; }
+        }
+        if (seen) continue;
+        JsonObject o = arr.add<JsonObject>();
+        o["ssid"] = ssid;
+        o["rssi"] = WiFi.RSSI(i);
+        o["open"] = WiFi.encryptionType(i) == WIFI_AUTH_OPEN;
+        if (arr.size() >= 20) break;
+      }
+      WiFi.scanDelete();
+    }
+    String out;
+    serializeJson(d, out);
+    req->send(200, "application/json", out);
+  });
+
+  server.on("/api/wifi/forget", HTTP_POST, [](AsyncWebServerRequest *req) {
+    prefs.remove("staSsid");
+    prefs.remove("staPass");
+    staSsid = "";
+    staPass = "";
+    staTrying = false;
+    WiFi.disconnect(false, true);  // keep the radio and the AP running
+    JsonDocument d;
+    wifiStateJson(d.to<JsonObject>());
+    String out;
+    serializeJson(d, out);
+    req->send(200, "application/json", out);
+  });
+
+  server.on("/api/wifi", HTTP_GET, [](AsyncWebServerRequest *req) {
+    JsonDocument d;
+    wifiStateJson(d.to<JsonObject>());
+    String out;
+    serializeJson(d, out);
+    req->send(200, "application/json", out);
+  });
+
+  // POST /api/wifi - {"ssid":"...","password":"..."}
+  auto *wifiHandler = new AsyncCallbackJsonWebHandler(
+      "/api/wifi", [](AsyncWebServerRequest *req, JsonVariant &json) {
+        JsonObjectConst o = json.as<JsonObjectConst>();
+        String ssid = o["ssid"].is<const char *>() ? o["ssid"].as<const char *>() : "";
+        String pass = o["password"].is<const char *>() ? o["password"].as<const char *>() : "";
+        if (ssid.length() == 0 || ssid.length() > 32 || pass.length() > 63) {
+          req->send(400, "application/json",
+                    "{\"error\":\"ssid fehlt oder ist zu lang\"}");
+          return;
+        }
+        staSsid = ssid;
+        staPass = pass;
+        prefs.putString("staSsid", staSsid);
+        prefs.putString("staPass", staPass);
+        staConnect();
+        JsonDocument d;
+        wifiStateJson(d.to<JsonObject>());
+        String out;
+        serializeJson(d, out);
+        req->send(200, "application/json", out);
+      });
+  wifiHandler->setMethod(HTTP_POST | HTTP_PUT);
+  server.addHandler(wifiHandler);
+
   server.on("/openapi.json", HTTP_GET, [](AsyncWebServerRequest *req) {
     req->send(200, "application/json", OPENAPI_JSON);
   });
@@ -529,6 +649,10 @@ void loop() {
   portEXIT_CRITICAL(&cmdMux);
 
   driveApply(turn, fwd, cmdScale);
+
+  if (staTrying && (WiFi.status() == WL_CONNECTED || millis() - staSince > 25000)) {
+    staTrying = false;
+  }
 
   if (pairRequested) {
     pairRequested = false;

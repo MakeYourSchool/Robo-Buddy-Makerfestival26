@@ -55,6 +55,22 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(
                   border-radius:8px;padding:9px;font:inherit;font-size:13px;cursor:pointer}
   .actions button:hover{border-color:var(--accent)}
   details summary{color:var(--muted);font-size:13px;cursor:pointer;outline:none}
+  .nets{display:flex;flex-direction:column;gap:4px;margin:4px 0 2px;
+        max-height:210px;overflow-y:auto}
+  .nets button{display:flex;align-items:center;gap:9px;width:100%;text-align:left;
+               background:#0d1117;border:1px solid var(--line);color:var(--fg);
+               border-radius:8px;padding:9px 11px;font:inherit;font-size:13.5px;
+               cursor:pointer}
+  .nets button.on{border-color:var(--accent);color:var(--accent)}
+  .nets .bars{flex:0 0 auto;font-size:11px;color:var(--muted);
+              font-variant-numeric:tabular-nums}
+  .nets .lock{margin-left:auto;color:var(--muted);font-size:11px}
+  input[type=text],input[type=password]{flex:1;min-width:0;background:#0d1117;
+    color:var(--fg);border:1px solid var(--line);border-radius:8px;padding:9px 10px;
+    font:inherit;font-size:13.5px}
+  .state{font-size:13px;color:var(--muted);margin:0 0 10px}
+  .state b{color:var(--fg);font-weight:600}
+  .state.ok b{color:#3fb950}
 </style>
 </head>
 <body>
@@ -64,6 +80,7 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(
 <nav>
   <button id="tab-drive" class="on">Fahren</button>
   <button id="tab-face">Gesicht</button>
+  <button id="tab-wifi">WLAN</button>
   <a href="/docs">API</a>
 </nav>
 
@@ -152,6 +169,33 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(
   <p class="hint">Änderungen wirken sofort und werden auf dem Roboter gespeichert.</p>
 </section>
 
+<section class="tab" id="pane-wifi">
+  <div class="panel">
+    <h3>Eigenes WLAN</h3>
+    <p class="state" id="wifiState">wird geladen…</p>
+    <div class="actions" style="margin-top:0">
+      <button id="scan">Netzwerke suchen</button>
+    </div>
+    <div class="nets" id="nets"></div>
+    <div class="row">
+      <label for="wifiSsid">Name</label>
+      <input id="wifiSsid" type="text" autocomplete="off" autocapitalize="none" spellcheck="false">
+    </div>
+    <div class="row">
+      <label for="wifiPass">Passwort</label>
+      <input id="wifiPass" type="password" autocomplete="off">
+    </div>
+    <div class="actions">
+      <button id="wifiSave">Verbinden</button>
+      <button id="wifiForget">Vergessen</button>
+    </div>
+  </div>
+  <p class="hint">Der Roboter behält sein eigenes WLAN, auch wenn er zusätzlich
+     in deinem Netz ist. Du kannst ihn also nie aussperren. Beim Verbinden
+     wechselt er den Funkkanal — das Handy fliegt dabei kurz aus dem
+     Roboter-WLAN und verbindet sich gleich wieder.</p>
+</section>
+
 <script>
 (() => {
   // /gesicht zeigt nur den Editor - ohne Reiter, ohne Fahren. Dieselbe Seite,
@@ -170,7 +214,7 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(
   };
 
   // ------------------------------------------------------------ reiter ---
-  const panes = { drive: 'pane-drive', face: 'pane-face' };
+  const panes = { drive: 'pane-drive', face: 'pane-face', wifi: 'pane-wifi' };
   for (const key of Object.keys(panes)) {
     document.getElementById('tab-' + key).onclick = () => {
       for (const k of Object.keys(panes)) {
@@ -481,6 +525,95 @@ static const char INDEX_HTML[] PROGMEM = R"HTML(
       tlv.textContent = st.trimLeft; trv.textContent = st.trimRight;
     } catch {}
   })();
+
+  // ------------------------------------------------------------- wlan ---
+  const netsBox = document.getElementById('nets');
+  const ssidIn = document.getElementById('wifiSsid');
+  const passIn = document.getElementById('wifiPass');
+  const stateEl = document.getElementById('wifiState');
+  let scanTimer = null;
+
+  function showWifi(w) {
+    stateEl.classList.toggle('ok', !!w.connected);
+    if (w.connected) {
+      stateEl.innerHTML = `Verbunden mit <b>${esc(w.ssid)}</b> — erreichbar unter <b>${esc(w.ip)}</b>`;
+    } else if (w.connecting) {
+      stateEl.innerHTML = `Verbinde mit <b>${esc(w.ssid)}</b>…`;
+    } else if (w.saved) {
+      stateEl.innerHTML = `<b>${esc(w.ssid)}</b> gespeichert, aber nicht verbunden`;
+    } else {
+      stateEl.innerHTML = `Nur eigenes WLAN <b>${esc(w.ap.ssid)}</b>`;
+    }
+    if (!ssidIn.value && w.ssid) ssidIn.value = w.ssid;
+  }
+  const esc = t => String(t ?? '').replace(/[&<>"]/g, c =>
+    ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  async function loadWifi() {
+    try { showWifi(await (await fetch('/api/wifi')).json()); } catch {}
+  }
+
+  function bars(rssi) {
+    const n = rssi >= -55 ? 4 : rssi >= -65 ? 3 : rssi >= -75 ? 2 : 1;
+    return '▂▄▆█'.slice(0, n).padEnd(4, '·');
+  }
+
+  async function pollScan() {
+    let r;
+    try { r = await (await fetch('/api/wifi/scan')).json(); } catch { return; }
+    if (r.scanning) { scanTimer = setTimeout(pollScan, 1200); return; }
+    scanTimer = null;
+    document.getElementById('scan').textContent = 'Netzwerke suchen';
+    netsBox.textContent = '';
+    if (!Array.isArray(r.networks) || !r.networks.length) {
+      const p = document.createElement('p');
+      p.className = 'hint';
+      p.textContent = 'Nichts gefunden — noch einmal suchen.';
+      netsBox.appendChild(p);
+      return;
+    }
+    r.networks.sort((a, b) => b.rssi - a.rssi);
+    for (const n of r.networks) {
+      const b = document.createElement('button');
+      b.innerHTML = `<span class="bars">${bars(n.rssi)}</span>` +
+                    `<span>${esc(n.ssid)}</span>` +
+                    `<span class="lock">${n.open ? 'offen' : '🔒'}</span>`;
+      b.onclick = () => {
+        ssidIn.value = n.ssid;
+        passIn.value = '';
+        (n.open ? document.getElementById('wifiSave') : passIn).focus();
+        [...netsBox.children].forEach(c => c.classList.toggle('on', c === b));
+      };
+      netsBox.appendChild(b);
+    }
+  }
+
+  document.getElementById('scan').onclick = () => {
+    if (scanTimer) return;
+    document.getElementById('scan').textContent = 'suche…';
+    netsBox.textContent = '';
+    pollScan();
+  };
+
+  document.getElementById('wifiSave').onclick = async () => {
+    if (!ssidIn.value) { ssidIn.focus(); return; }
+    try {
+      const r = await fetch('/api/wifi', {
+        method: 'POST', headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ssid: ssidIn.value, password: passIn.value})
+      });
+      showWifi(await r.json());
+      // der Verbindungsaufbau läuft im Hintergrund weiter
+      for (const ms of [1500, 3000, 5000, 8000, 12000]) setTimeout(loadWifi, ms);
+    } catch {}
+  };
+
+  document.getElementById('wifiForget').onclick = async () => {
+    try { showWifi(await (await fetch('/api/wifi/forget', {method:'POST'})).json()); } catch {}
+    passIn.value = '';
+  };
+
+  loadWifi();
 
   if (faceOnly) {
     document.querySelector('nav').hidden = true;

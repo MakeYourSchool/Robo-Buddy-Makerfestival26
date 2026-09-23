@@ -8,7 +8,7 @@ static const char OPENAPI_JSON[] PROGMEM = R"JSON({
 "info":{"title":"MF26 Roboter-API","version":"1.0.0",
 "description":"Den Roboter fahren und sein Gesicht gestalten. Alle Daten sind JSON. Es gibt keine Anmeldung - der Roboter vertraut jedem in seinem Netzwerk."},
 "servers":[{"url":"/","description":"Der Roboter selbst"}],
-"tags":[{"name":"drive","description":"Fahren"},{"name":"face","description":"Gesicht"},{"name":"system","description":"Status und Einstellungen"}],
+"tags":[{"name":"drive","description":"Fahren"},{"name":"wifi","description":"WLAN"},{"name":"face","description":"Gesicht"},{"name":"system","description":"Status und Einstellungen"}],
 "paths":{
 "/api/status":{"get":{"tags":["system"],"summary":"Aktueller Zustand des Roboters","responses":{"200":{"description":"OK","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Status"}}}}}}},
 "/api/drive":{"post":{"tags":["drive"],"summary":"Fahrbefehl setzen","description":"x lenkt, y gibt Gas. Werte von -1 bis 1. Der Roboter hält von selbst an, wenn 700 ms lang kein Befehl kommt - ein Programm sollte also mindestens zweimal pro Sekunde senden.","requestBody":{"required":true,"content":{"application/json":{"schema":{"$ref":"#/components/schemas/Drive"},"example":{"x":0,"y":0.5}}}},"responses":{"200":{"description":"Angenommen","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Ok"}}}},"400":{"description":"Daten waren kein JSON-Objekt"}}}},
@@ -21,6 +21,11 @@ static const char OPENAPI_JSON[] PROGMEM = R"JSON({
 "/api/face/reset":{"post":{"tags":["face"],"summary":"Standardgesicht wiederherstellen","responses":{"200":{"description":"Das Standardgesicht","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Face"}}}}}}},
 "/api/blink":{"post":{"tags":["face"],"summary":"Einmal blinzeln, sofort","responses":{"200":{"description":"OK","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Ok"}}}}}}},
 "/api/identify":{"post":{"tags":["face"],"summary":"Kurz blinken, um den Roboter am Tisch zu finden","description":"3 Sekunden lang blitzt der Bildschirm statt des Gesichts zu zeigen. Wirkt nicht, waehrend der Pairing-Screen (QR-Code) angezeigt wird.","responses":{"200":{"description":"OK","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Ok"}}}}}}},
+"/api/wifi":{
+"get":{"tags":["wifi"],"summary":"WLAN-Zustand lesen","description":"Eigener Access Point und - falls eingerichtet - das Netz, in das sich der Roboter einbucht.","responses":{"200":{"description":"OK","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Wifi"}}}}}},
+"post":{"tags":["wifi"],"summary":"In ein WLAN einbuchen","description":"Zugangsdaten werden im Geraet gespeichert und beim Start wieder benutzt. Der eigene Access Point bleibt dabei an, man kann sich also nicht aussperren. Die Antwort kommt sofort; der Verbindungsaufbau laeuft weiter, den Fortschritt liefert GET /api/wifi.","requestBody":{"required":true,"content":{"application/json":{"schema":{"type":"object","properties":{"ssid":{"type":"string","maxLength":32},"password":{"type":"string","maxLength":63,"description":"Leer lassen bei offenen Netzen."}},"required":["ssid"]},"example":{"ssid":"Mein-WLAN","password":"geheim"}}}},"responses":{"200":{"description":"Angenommen","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Wifi"}}}},"400":{"description":"ssid fehlt oder ist zu lang","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Error"}}}}}}},
+"/api/wifi/scan":{"get":{"tags":["wifi"],"summary":"Nach Netzwerken suchen","description":"Der erste Aufruf startet die Suche und liefert scanning=true; danach so lange weiter abfragen, bis die Liste kommt (etwa zwei bis vier Sekunden). Gleiche Namen erscheinen nur einmal, mit dem staerksten Empfang.","responses":{"200":{"description":"OK","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Scan"}}}}}}},
+"/api/wifi/forget":{"post":{"tags":["wifi"],"summary":"Gespeichertes WLAN loeschen","description":"Trennt die Verbindung und vergisst die Zugangsdaten. Der eigene Access Point laeuft weiter.","responses":{"200":{"description":"OK","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Wifi"}}}}}}},
 "/api/pair":{"post":{"tags":["system"],"summary":"Zurück zum Pairing-Screen","description":"Zeigt wieder die QR-Codes zum Verbinden, so wie beim ersten Start: erst das WLAN des Roboters, dann seine Steuerseite - bis zum nächsten echten Fahrbefehl.","responses":{"200":{"description":"OK","content":{"application/json":{"schema":{"$ref":"#/components/schemas/Ok"}}}}}}}
 },
 "components":{"schemas":{
@@ -39,6 +44,18 @@ static const char OPENAPI_JSON[] PROGMEM = R"JSON({
 "uptimeMs":{"type":"integer"},"freeHeap":{"type":"integer"},
 "speed":{"type":"integer"},"trimLeft":{"type":"integer"},"trimRight":{"type":"integer"},
 "drive":{"$ref":"#/components/schemas/Drive"}}},
+"Wifi":{"type":"object","properties":{
+"ssid":{"type":"string","description":"Gespeichertes Netz, leer wenn keines."},
+"saved":{"type":"boolean"},"connected":{"type":"boolean"},"connecting":{"type":"boolean"},
+"ip":{"type":"string","description":"Adresse im fremden Netz, nur wenn verbunden."},
+"rssi":{"type":"integer","description":"Empfang, nur wenn verbunden."},
+"ap":{"type":"object","description":"Das eigene WLAN des Roboters.","properties":{
+"ssid":{"type":"string"},"ip":{"type":"string"},"stations":{"type":"integer"}}}}},
+"Scan":{"type":"object","properties":{
+"scanning":{"type":"boolean","description":"Noch am Suchen - spaeter erneut abfragen."},
+"networks":{"type":"array","items":{"type":"object","properties":{
+"ssid":{"type":"string"},"rssi":{"type":"integer"},
+"open":{"type":"boolean","description":"Ohne Passwort."}}}}}},
 "Options":{"type":"object","properties":{
 "eye":{"type":"array","items":{"type":"string"}},
 "mouth":{"type":"array","items":{"type":"string"}},

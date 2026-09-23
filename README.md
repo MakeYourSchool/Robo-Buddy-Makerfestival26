@@ -53,6 +53,23 @@ Das Display führt in zwei Schritten durch:
 Beim ersten echten Fahrbefehl übernimmt das Gesicht. `POST /api/pair` holt die
 Anleitung wieder auf das Display.
 
+## Ins eigene WLAN einbuchen
+
+Wer den Roboter lieber im Heim- oder Schulnetz hätte, findet auf der
+Steuerseite den Reiter **WLAN**: **Netzwerke suchen** listet alles in
+Reichweite mit Empfangsstärke, ein Tippen übernimmt den Namen, Passwort
+eintragen, **Verbinden**.
+
+Sein **eigenes WLAN behält der Roboter dabei immer**. Ein Tippfehler im
+Passwort sperrt also niemanden aus — er ist weiterhin über `MF26-XXXXX` und
+`192.168.4.1` erreichbar. Beim Verbinden wechselt er allerdings den Funkkanal,
+dabei fliegt das Handy kurz aus dem Roboter-WLAN und verbindet sich gleich
+wieder.
+
+Die Zugangsdaten bleiben gespeichert und werden beim Start wieder benutzt.
+**Vergessen** löscht sie. Über die API geht das ebenso, siehe `/api/wifi`
+und `/api/wifi/scan` unter `/docs`.
+
 WLAN-Präfix und Passwort stehen in `src/config.h`. Das Passwort ist nicht
 geheim, der QR-Code zeigt es jedem, der vor dem Roboter steht. Es verhindert
 nur, dass fremde Handys versehentlich beitreten.
